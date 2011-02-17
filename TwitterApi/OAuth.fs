@@ -61,7 +61,6 @@ type OAuthParameters( consumerKey, consumerSecret ) =
         |> fun s -> "OAuth " + s
 
     member this.ToHeaderStringForRequestToken() = toHeaderString( RequestTokenUrl, "" )
-        
 
 
 type OAuthRequest( consumerKey : string, consumerSecret : string ) =
@@ -71,23 +70,26 @@ type OAuthRequest( consumerKey : string, consumerSecret : string ) =
     member this.GetRequestToken() = 
         let headerString = authParams.ToHeaderStringForRequestToken()
 
-        try
-            let req = System.Net.WebRequest.Create( RequestTokenUrl )
-            req.Headers.Add( "Authorization", headerString )
-            let res = req.GetResponse()
-            use sr = new System.IO.StreamReader( res.GetResponseStream() )
-            let reqToken = sr.ReadToEnd().Split( '&' )
-            let splitValue (s:string) = s.Split( '=' ).[1]
-            (splitValue reqToken.[0], splitValue reqToken.[1])
+        let response = 
+            try
+                let req = System.Net.WebRequest.Create( RequestTokenUrl )
+                req.Headers.Add( "Authorization", headerString )
+                req.GetResponse()
             
-        with
-        | :? System.Net.WebException as ex ->
-            match ex.Status with
-            | System.Net.WebExceptionStatus.ProtocolError -> 
-                printfn "アクセスが拒否されました。ConsumerKey や ConsumerSecret が間違っている可能性があります。"
-                reraise()
-            | _ ->
-                reraise()
+            with
+            | :? System.Net.WebException as ex ->
+                match ex.Status with
+                | System.Net.WebExceptionStatus.ProtocolError -> 
+                    printfn "アクセスが拒否されました。ConsumerKey や ConsumerSecret が間違っている可能性があります。"
+                    reraise()
+                | _ ->
+                    reraise()
+        
+        use stream = response.GetResponseStream()
+        use sr = new System.IO.StreamReader( stream )
+        let reqToken = sr.ReadToEnd().Split( '&' )
+        let splitValue (s:string) = s.Split( '=' ).[1]
+        (splitValue reqToken.[0], splitValue reqToken.[1])
 
 
 

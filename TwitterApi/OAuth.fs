@@ -15,7 +15,7 @@ let UrlEncode (url:string) =
         | c when System.Char.IsLetterOrDigit( c )
             -> sb.Append( c )
         | _
-            -> sb.Append( sprintf "%%%02X" (System.Convert.ToInt32( c )) )
+            -> sb.Append( sprintf "%%%X" (System.Convert.ToInt32( c )) )
 
     let sb = Seq.fold checkChar (new System.Text.StringBuilder()) url
     sb.ToString()
@@ -30,9 +30,13 @@ type OAuthParameters( consumerKey, consumerSecret ) =
         System.Convert.ToBase64String( hashed )
 
     let rnd = new System.Random()
-
+    let population = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     let getNonce() =
-        sprintf "%08d" (rnd.Next( 10000000 ))
+        let rec generate (sb:System.Text.StringBuilder) =
+            function
+            | 0 -> sb
+            | i -> generate (sb.Append( population.[rnd.Next( population.Length )] )) (i-1)
+        (generate (System.Text.StringBuilder()) 30).ToString()
 
     let getTimeStamp() =
         let ts = System.DateTime.UtcNow - new System.DateTime( 1970, 1, 1 )
@@ -61,25 +65,26 @@ type OAuthParameters( consumerKey, consumerSecret ) =
         |> List.reduce (fun acc item -> acc + ", " + item)
         |> fun s -> "OAuth " + s
 
-    member this.ToHeaderStringForRequestToken() = toHeaderString RequestTokenUrl ("", "") "GET" defaultParams
+    member this.ToHeaderStringForRequestToken() = toHeaderString RequestTokenUrl ("", "") "POST" defaultParams
 
     member this.ToHeaderStringForAccessToken( requestToken, verifier ) = 
         let paramsForAccess = ("oauth_token", fst requestToken)::("oauth_verifier", verifier)::defaultParams
-        toHeaderString AccessTokenUrl requestToken "GET" paramsForAccess
+        toHeaderString AccessTokenUrl requestToken "POST" paramsForAccess
 
     member this.ToHeaderStringForApi( accessToken, url ) =
         let paramsForApi = ("oauth_token", fst accessToken)::defaultParams
-        toHeaderString url accessToken "GET" paramsForApi
+        toHeaderString url accessToken "POST" paramsForApi
 
 let private tokenFromString (token:string) =
     let reqToken = token.Split( '&' )
     let splitValue (s:string) = s.Split( '=' ).[1]
     (splitValue reqToken.[0], splitValue reqToken.[1])
 
-let GetOAuthWebResponse (url:string) (headerString:string) =
+let GetOAuthWebResponse (url:string) (headerString:string) (method:string) =
     try
         let req = System.Net.WebRequest.Create( url )
         req.Headers.Add( "Authorization", headerString )
+        req.Method <- method
         req.GetResponse()
             
     with
@@ -99,7 +104,7 @@ let GetRequestToken( consumerKey, consumerSecret ) =
 
     let headerString = authParams.ToHeaderStringForRequestToken()
 
-    let response = GetOAuthWebResponse RequestTokenUrl headerString
+    let response = GetOAuthWebResponse RequestTokenUrl headerString "POST"
         
     use stream = response.GetResponseStream()
     use sr = new System.IO.StreamReader( stream )
@@ -113,7 +118,7 @@ let GetAccessToken( consumerKey, consumerSecret, requestToken, verifier ) =
 
     let headerString = authParams.ToHeaderStringForAccessToken( requestToken, verifier )
 
-    let response = GetOAuthWebResponse AccessTokenUrl headerString
+    let response = GetOAuthWebResponse AccessTokenUrl headerString "POST"
 
     use stream = response.GetResponseStream()
     use sr = new System.IO.StreamReader( stream )

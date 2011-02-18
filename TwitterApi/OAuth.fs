@@ -91,6 +91,10 @@ type OAuthRequest( consumerKey : string, consumerSecret : string ) =
         let splitValue (s:string) = s.Split( '=' ).[1]
         (splitValue reqToken.[0], splitValue reqToken.[1])
 
+    member this.GetAuthorizationUrl() =
+        let rkey, rsec = this.GetRequestToken()
+        AuthorizeUrl + @"?oauth_token=" + rkey
+
 
 
 

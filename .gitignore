@@ -1,6 +1,9 @@
 #ignore thumbnails created by windows
 Thumbs.db
 
+#Ignore files in F# project
+*.fsx
+
 #Ignore files in C# project
 
 *.ico

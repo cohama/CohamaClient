@@ -48,55 +48,86 @@ type OAuthParameters( consumerKey, consumerSecret ) =
             "oauth_version", "1.0";
         ]
         
-    let toHeaderString( url, token ) =
-        defaultParams
+    let toHeaderString url token httpmethod paramsList =
+        paramsList
+        |> List.sort
         |> List.map (fun ( k, v ) -> k + "=" + v)
         |> List.reduce (fun acc item -> acc + "&" + item)
-        |> fun param -> "GET&" + UrlEncode url + "&" + UrlEncode param
-        |> encryptByHmacSha1WithBase64 (consumerSecret + "&" + token)
-        |> fun signature -> ("oauth_signature", signature)::defaultParams
+        |> fun param -> httpmethod + "&" + UrlEncode url + "&" + UrlEncode param
+        |> encryptByHmacSha1WithBase64 (consumerSecret + "&" + snd token)
+        |> fun signature -> ("oauth_signature", signature)::paramsList
         |> List.sort
         |> List.map (fun ( k, v ) -> k + "=\"" + (UrlEncode v) + "\"")
         |> List.reduce (fun acc item -> acc + ", " + item)
         |> fun s -> "OAuth " + s
 
-    member this.ToHeaderStringForRequestToken() = toHeaderString( RequestTokenUrl, "" )
+    member this.ToHeaderStringForRequestToken() = toHeaderString RequestTokenUrl ("", "") "GET" defaultParams
 
+    member this.ToHeaderStringForAccessToken( requestToken, verifier ) = 
+        let paramsForAccess = ("oauth_token", fst requestToken)::("oauth_verifier", verifier)::defaultParams
+        toHeaderString AccessTokenUrl requestToken "GET" paramsForAccess
 
-type OAuthRequest( consumerKey : string, consumerSecret : string ) =
+    member this.ToHeaderStringForApi( accessToken, url ) =
+        let paramsForApi = ("oauth_token", fst accessToken)::defaultParams
+        toHeaderString url accessToken "GET" paramsForApi
+
+        
+let GetRequestToken( consumerKey, consumerSecret ) = 
 
     let authParams = new OAuthParameters( consumerKey, consumerSecret )
 
-    member this.GetRequestToken() = 
-        let headerString = authParams.ToHeaderStringForRequestToken()
+    let headerString = authParams.ToHeaderStringForRequestToken()
 
-        let response = 
-            try
-                let req = System.Net.WebRequest.Create( RequestTokenUrl )
-                req.Headers.Add( "Authorization", headerString )
-                req.GetResponse()
+    let response = 
+        try
+            let req = System.Net.WebRequest.Create( RequestTokenUrl )
+            req.Headers.Add( "Authorization", headerString )
+            req.GetResponse()
             
-            with
-            | :? System.Net.WebException as ex ->
-                match ex.Status with
-                | System.Net.WebExceptionStatus.ProtocolError -> 
-                    printfn "アクセスが拒否されました。ConsumerKey や ConsumerSecret が間違っている可能性があります。"
-                    reraise()
-                | _ ->
-                    reraise()
+        with
+        | :? System.Net.WebException as ex ->
+            match ex.Status with
+            | System.Net.WebExceptionStatus.ProtocolError -> 
+                use st = ex.Response.GetResponseStream()
+                use sr = new System.IO.StreamReader( st )
+                printfn "---->\n%s <----" <| sr.ReadToEnd()
+                reraise()
+            | _ ->
+                reraise()
         
-        use stream = response.GetResponseStream()
-        use sr = new System.IO.StreamReader( stream )
-        let reqToken = sr.ReadToEnd().Split( '&' )
-        let splitValue (s:string) = s.Split( '=' ).[1]
-        (splitValue reqToken.[0], splitValue reqToken.[1])
+    use stream = response.GetResponseStream()
+    use sr = new System.IO.StreamReader( stream )
+    let reqToken = sr.ReadToEnd().Split( '&' )
+    let splitValue (s:string) = s.Split( '=' ).[1]
+    (splitValue reqToken.[0], splitValue reqToken.[1])
 
-    member this.GetAuthorizationUrl() =
-        let rkey, rsec = this.GetRequestToken()
-        AuthorizeUrl + @"?oauth_token=" + rkey
+let GetAuthorizationUrl requestToken = AuthorizeUrl + @"?oauth_token=" + fst requestToken
 
-
-
-
-
+let GetAccessToken( consumerKey, consumerSecret, requestToken, verifier ) =
     
+    let authParams = new OAuthParameters( consumerKey, consumerSecret )
+
+    let headerString = authParams.ToHeaderStringForAccessToken( requestToken, verifier )
+
+    let response = 
+        try
+            let req = System.Net.WebRequest.Create( AccessTokenUrl )
+            req.Headers.Add( "Authorization", headerString )
+            req.GetResponse()
+            
+        with
+        | :? System.Net.WebException as ex ->
+            match ex.Status with
+            | System.Net.WebExceptionStatus.ProtocolError -> 
+                use st = ex.Response.GetResponseStream()
+                use sr = new System.IO.StreamReader( st )
+                printfn "---->\n%s <----" <| sr.ReadToEnd()
+                reraise()
+            | _ ->
+                reraise()
+        
+    use stream = response.GetResponseStream()
+    use sr = new System.IO.StreamReader( stream )
+    let reqToken = sr.ReadToEnd().Split( '&' )
+    let splitValue (s:string) = s.Split( '=' ).[1]
+    (splitValue reqToken.[0], splitValue reqToken.[1])

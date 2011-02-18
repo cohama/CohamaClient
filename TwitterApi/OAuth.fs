@@ -1,6 +1,6 @@
 ﻿module OAuth
 
-let OAuthRoot = "http://twitter.com/oauth/"
+let OAuthRoot = "https://twitter.com/oauth/"
 let RequestTokenUrl = OAuthRoot + "request_token"
 let AccessTokenUrl = OAuthRoot + "access_token"
 let AuthorizeUrl = OAuthRoot + "authorize"
@@ -71,6 +71,27 @@ type OAuthParameters( consumerKey, consumerSecret ) =
         let paramsForApi = ("oauth_token", fst accessToken)::defaultParams
         toHeaderString url accessToken "GET" paramsForApi
 
+let private tokenFromString (token:string) =
+    let reqToken = token.Split( '&' )
+    let splitValue (s:string) = s.Split( '=' ).[1]
+    (splitValue reqToken.[0], splitValue reqToken.[1])
+
+let GetOAuthWebResponse (url:string) (headerString:string) =
+    try
+        let req = System.Net.WebRequest.Create( url )
+        req.Headers.Add( "Authorization", headerString )
+        req.GetResponse()
+            
+    with
+    | :? System.Net.WebException as ex ->
+        match ex.Status with
+        | System.Net.WebExceptionStatus.ProtocolError -> 
+            use st = ex.Response.GetResponseStream()
+            use sr = new System.IO.StreamReader( st )
+            printfn "---->\n%s <----" <| sr.ReadToEnd()
+            reraise()
+        | _ ->
+            reraise()
         
 let GetRequestToken( consumerKey, consumerSecret ) = 
 
@@ -78,28 +99,11 @@ let GetRequestToken( consumerKey, consumerSecret ) =
 
     let headerString = authParams.ToHeaderStringForRequestToken()
 
-    let response = 
-        try
-            let req = System.Net.WebRequest.Create( RequestTokenUrl )
-            req.Headers.Add( "Authorization", headerString )
-            req.GetResponse()
-            
-        with
-        | :? System.Net.WebException as ex ->
-            match ex.Status with
-            | System.Net.WebExceptionStatus.ProtocolError -> 
-                use st = ex.Response.GetResponseStream()
-                use sr = new System.IO.StreamReader( st )
-                printfn "---->\n%s <----" <| sr.ReadToEnd()
-                reraise()
-            | _ ->
-                reraise()
+    let response = GetOAuthWebResponse RequestTokenUrl headerString
         
     use stream = response.GetResponseStream()
     use sr = new System.IO.StreamReader( stream )
-    let reqToken = sr.ReadToEnd().Split( '&' )
-    let splitValue (s:string) = s.Split( '=' ).[1]
-    (splitValue reqToken.[0], splitValue reqToken.[1])
+    tokenFromString <| sr.ReadToEnd()
 
 let GetAuthorizationUrl requestToken = AuthorizeUrl + @"?oauth_token=" + fst requestToken
 
@@ -109,25 +113,8 @@ let GetAccessToken( consumerKey, consumerSecret, requestToken, verifier ) =
 
     let headerString = authParams.ToHeaderStringForAccessToken( requestToken, verifier )
 
-    let response = 
-        try
-            let req = System.Net.WebRequest.Create( AccessTokenUrl )
-            req.Headers.Add( "Authorization", headerString )
-            req.GetResponse()
-            
-        with
-        | :? System.Net.WebException as ex ->
-            match ex.Status with
-            | System.Net.WebExceptionStatus.ProtocolError -> 
-                use st = ex.Response.GetResponseStream()
-                use sr = new System.IO.StreamReader( st )
-                printfn "---->\n%s <----" <| sr.ReadToEnd()
-                reraise()
-            | _ ->
-                reraise()
-        
+    let response = GetOAuthWebResponse AccessTokenUrl headerString
+
     use stream = response.GetResponseStream()
     use sr = new System.IO.StreamReader( stream )
-    let reqToken = sr.ReadToEnd().Split( '&' )
-    let splitValue (s:string) = s.Split( '=' ).[1]
-    (splitValue reqToken.[0], splitValue reqToken.[1])
+    tokenFromString <| sr.ReadToEnd()

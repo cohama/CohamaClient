@@ -8,7 +8,22 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TwitterClient", "TwitterCli
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TwitterApi", "TwitterApi\TwitterApi.fsproj", "{A0FAA78E-4BF3-49B6-A0B3-F4AF81770B6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTest", "UnitTest\UnitTest.csproj", "{49FF3B6E-AB7B-4125-8B51-427933A936E3}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7C2D2067-9957-4452-BE7D-56CA0D7192B1} = {7C2D2067-9957-4452-BE7D-56CA0D7192B1}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C990F2FA-03B4-4893-BD1A-AB76B1334916}"
+	ProjectSection(SolutionItems) = preProject
+		Local.testsettings = Local.testsettings
+		TraceAndTestImpact.testsettings = TraceAndTestImpact.testsettings
+		TwitterClient.vsmdi = TwitterClient.vsmdi
+	EndProjectSection
+EndProject
 Global
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = TwitterClient.vsmdi
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -38,6 +53,16 @@ Global
 		{A0FAA78E-4BF3-49B6-A0B3-F4AF81770B6F}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{A0FAA78E-4BF3-49B6-A0B3-F4AF81770B6F}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{A0FAA78E-4BF3-49B6-A0B3-F4AF81770B6F}.Release|x86.ActiveCfg = Release|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{49FF3B6E-AB7B-4125-8B51-427933A936E3}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

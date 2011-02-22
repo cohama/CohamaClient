@@ -1,8 +1,12 @@
 #ignore thumbnails created by windows
 Thumbs.db
 
+#Ignore files in UnitTest project
+*.testsettings
+
 #Ignore files in F# project
 *.fsx
+*.vsmdi
 
 #Ignore files in C# project
 

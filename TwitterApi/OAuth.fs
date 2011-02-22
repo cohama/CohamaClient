@@ -1,4 +1,5 @@
-﻿module OAuth
+﻿[<RequireQualifiedAccess>]
+module OAuth
 
 let OAuthRoot = "https://twitter.com/oauth/"
 let RequestTokenUrl = OAuthRoot + "request_token"

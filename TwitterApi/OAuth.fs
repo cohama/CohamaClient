@@ -81,11 +81,11 @@ let private tokenFromString (token:string) =
     let splitValue (s:string) = s.Split( '=' ).[1]
     (splitValue reqToken.[0], splitValue reqToken.[1])
 
-let GetOAuthWebResponse (url:string) (headerString:string) (method:string) =
+let GetOAuthWebResponse (url:string) (headerString:string) (httpMethod:string) =
     try
         let req = System.Net.WebRequest.Create( url )
         req.Headers.Add( "Authorization", headerString )
-        req.Method <- method
+        req.Method <- httpMethod
         req.GetResponse()
             
     with

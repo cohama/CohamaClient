@@ -5,22 +5,30 @@ let RequestTokenUrl = OAuthRoot + "request_token"
 let AccessTokenUrl = OAuthRoot + "access_token"
 let AuthorizeUrl = OAuthRoot + "authorize"
 
-let UrlEncode (url:string) =
-    let checkChar (sb:System.Text.StringBuilder) (c:char) =
+let UrlEncode url =
+    let population = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    let checkChar (sb:StringBuilder) (c:char) =
         match c with
         | '.'
         | '-'
         | '_'
             -> sb.Append( c )
-        | c when System.Char.IsLetterOrDigit( c )
+        | c when Seq.exists ((=) c) population
             -> sb.Append( c )
+        | ' '
+            -> sb.Append( '+' )
         | _
-            -> sb.Append( sprintf "%%%X" (System.Convert.ToInt32( c )) )
+            -> sb.Append( sprintf "%%%X" (Convert.ToInt32( c )) )
 
-    let sb = Seq.fold checkChar (new System.Text.StringBuilder()) url
+    let sb = Seq.fold checkChar (new StringBuilder()) url
     sb.ToString()
 
-type private OAuthParameters( consumerKey, consumerSecret ) =
+let UrlEncodeWithUtf8 (url:string) =
+    url
+    |> Encoding.UTF8.GetBytes
+    |> Seq.map char
+    |> UrlEncode
+
 
     let encryptByHmacSha1WithBase64 (key:string) (source:string) = 
         let srcByte = System.Text.Encoding.UTF8.GetBytes( source )

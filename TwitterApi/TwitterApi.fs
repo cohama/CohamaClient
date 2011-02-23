@@ -5,6 +5,7 @@ open System.Net
 open System.IO
 open System.Xml
 open OAuth
+open System.Text
 
 type TwitterApi( oauth:OAuth ) =
 
@@ -25,13 +26,15 @@ type TwitterApi( oauth:OAuth ) =
     member this.HomeTimeLine() =
         let path = "statuses/home_timeline.xml"
         let url = TwitterApiUrl + path
-        
-        let res = GetOAuthWebResponse url (oauth.ToAuthorizationHeader url "GET") "GET"
 
-        use st = res.GetResponseStream()
-        use sr = new StreamReader( st )
+        let result = oauth.GetRequest url
+        result.SelectNodes( "/statuses/status" )
 
-        let xmlDoc = new XmlDocument()
-        xmlDoc.LoadXml( sr.ReadToEnd() )
-        
-        xmlDoc.SelectNodes( "/statuses/status" )
+    member this.UpdateStatus text =
+        let path = "statuses/update.xml"
+        let url = TwitterApiUrl + path
+
+        let status = [("status", UrlEncodeWithUtf8 text)]
+
+        let result = oauth.PostRequest url status
+        ()

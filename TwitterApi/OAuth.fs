@@ -1,5 +1,4 @@
-﻿[<RequireQualifiedAccess>]
-module OAuth
+﻿module OAuth
 
 let OAuthRoot = "https://twitter.com/oauth/"
 let RequestTokenUrl = OAuthRoot + "request_token"
@@ -21,7 +20,7 @@ let UrlEncode (url:string) =
     let sb = Seq.fold checkChar (new System.Text.StringBuilder()) url
     sb.ToString()
 
-type OAuthParameters( consumerKey, consumerSecret ) =
+type private OAuthParameters( consumerKey, consumerSecret ) =
 
     let encryptByHmacSha1WithBase64 (key:string) (source:string) = 
         let srcByte = System.Text.Encoding.UTF8.GetBytes( source )
@@ -72,11 +71,25 @@ type OAuthParameters( consumerKey, consumerSecret ) =
         let paramsForAccess = ("oauth_token", fst requestToken)::("oauth_verifier", verifier)::defaultParams
         toHeaderString AccessTokenUrl requestToken "POST" paramsForAccess
 
-    member this.ToHeaderStringForApi( accessToken, url ) =
+    member this.ToHeaderStringForApi( accessToken, url, httpmethod ) =
         let paramsForApi = ("oauth_token", fst accessToken)::defaultParams
-        toHeaderString url accessToken "POST" paramsForApi
+        toHeaderString url accessToken httpmethod paramsForApi
 
-let private tokenFromString (token:string) =
+type OAuth( ckey, csec, akey, asec ) =
+
+    let parameters = OAuthParameters( ckey, csec )
+
+    member this.ConsumerKey with get() = ckey
+    member this.ConsumerSecret with get() = csec
+    member this.AccessKey with get() = akey
+    member this.AccessSecret with get() = asec
+
+    member this.ToAuthorizationHeader url httpmethod =
+        parameters.ToHeaderStringForApi( (akey, asec), url, httpmethod )
+
+
+
+let tokenFromString (token:string) =
     let reqToken = token.Split( '&' )
     let splitValue (s:string) = s.Split( '=' ).[1]
     (splitValue reqToken.[0], splitValue reqToken.[1])

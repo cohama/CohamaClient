@@ -1,4 +1,5 @@
-﻿module OAuth
+﻿
+module OAuth
 
 open System
 open System.Net
@@ -36,21 +37,12 @@ let UrlEncodeWithUtf8 (url:string) =
     |> Seq.map char
     |> UrlEncode
 
-type OAuthToken( key:string, secret:string ) =
+let FromString (token:string) =
+    let reqToken = token.Split( '&' )
+    let splitValue (s:string) = s.Split( '=' ).[1]
+    (splitValue reqToken.[0], splitValue reqToken.[1])
 
-    member this.Key = key
-    member this.Secret = secret
-    
-    new() = new OAuthToken( "", "" )
-
-    static member Empty = new OAuthToken()
-
-    static member FromString (token:string) =
-        let reqToken = token.Split( '&' )
-        let splitValue (s:string) = s.Split( '=' ).[1]
-        new OAuthToken(splitValue reqToken.[0], splitValue reqToken.[1])
-
-type private OAuthParameters( consumerToken:OAuthToken ) =
+type private OAuthParameters( consumerKey, consumerSecret ) =
 
     let encryptByHmacSha1WithBase64 (key:string) (source:string) = 
         let srcByte = Encoding.UTF8.GetBytes( source )
@@ -66,43 +58,44 @@ type private OAuthParameters( consumerToken:OAuthToken ) =
             function
             | 0 -> sb
             | i -> generate (sb.Append( population.[rnd.Next( population.Length )] )) (i-1)
-        (generate (StringBuilder()) 30).ToString()
+        (generate (new StringBuilder()) 30).ToString()
 
     let getTimeStamp() =
         let ts = DateTime.UtcNow - new DateTime( 1970, 1, 1 )
         Convert.ToInt64( ts.TotalSeconds ).ToString()
     
-    let defaultParams = 
+    let defaultParams () = 
         [
             "oauth_callback", "oob";
-            "oauth_consumer_key", consumerToken.Key;
+            "oauth_consumer_key", consumerKey;
             "oauth_nonce", getNonce();
             "oauth_signature_method", "HMAC-SHA1";
             "oauth_timestamp", getTimeStamp();
             "oauth_version", "1.0";
         ]
         
-    let toHeaderString url (token:OAuthToken) httpmethod paramsList exparams =
+    let toHeaderString url token httpmethod paramsList exparams =
         paramsList@exparams
         |> List.sort
         |> List.map (fun ( k, v ) -> k + "=" + v)
         |> List.reduce (fun acc item -> acc + "&" + item)
         |> fun param -> httpmethod + "&" + UrlEncode url + "&" + UrlEncode param
-        |> encryptByHmacSha1WithBase64 (consumerToken.Secret + "&" + token.Secret)
+        |> encryptByHmacSha1WithBase64 (consumerSecret + "&" + snd token)
         |> fun signature -> ("oauth_signature", signature)::paramsList
         |> List.sort
         |> List.map (fun ( k, v ) -> k + "=\"" + (UrlEncode v) + "\"")
         |> List.reduce (fun acc item -> acc + ", " + item)
         |> fun s -> "OAuth " + s
         
-    member this.ToHeaderStringForRequestToken() = toHeaderString RequestTokenUrl OAuthToken.Empty "POST" defaultParams []
+    member this.ToHeaderStringForRequestToken() =
+        toHeaderString RequestTokenUrl ("", "") "POST" (defaultParams()) []
 
-    member this.ToHeaderStringForAccessToken( requestToken:OAuthToken, verifier ) = 
-        let paramsForAccess = ("oauth_token", requestToken.Key)::("oauth_verifier", verifier)::defaultParams
+    member this.ToHeaderStringForAccessToken( requestToken, verifier ) = 
+        let paramsForAccess = ("oauth_token", fst requestToken)::("oauth_verifier", verifier)::defaultParams()
         toHeaderString AccessTokenUrl requestToken "POST" paramsForAccess []
 
-    member this.ToHeaderStringForApi( accessToken:OAuthToken, url, httpmethod, parameters ) =
-        let paramsForApi = ("oauth_token", accessToken.Key)::defaultParams
+    member this.ToHeaderStringForApi( accessToken, url, httpmethod, parameters ) =
+        let paramsForApi = ("oauth_token", fst accessToken)::defaultParams()
         toHeaderString url accessToken httpmethod paramsForApi parameters
 
 let GetOAuthRequestResult (url:string) headerString httpMethod =
@@ -123,48 +116,66 @@ let GetOAuthRequestResult (url:string) headerString httpMethod =
     use stream = response.GetResponseStream()
     use reader = new StreamReader( stream )
     reader.ReadToEnd()
-    
-type OAuth( ckey, csec ) =
-    
-    let mutable m_aToken:OAuthToken = OAuthToken.Empty
 
-    member this.ConsumerToken = new OAuthToken( ckey, csec )
-    member this.AccessToken
-        with get()           = m_aToken
-        and  set accessToken = m_aToken <- accessToken
+type OAuthRegistration( ckey, csec ) =
+
+    let authParams = new OAuthParameters( ckey, csec )
+
+    member this.ConsumerKey = ckey
+    member this.ConsumerSecret = csec
+        
+    member this.GetRequestToken() = 
+        let headerString = authParams.ToHeaderStringForRequestToken()
+        GetOAuthRequestResult RequestTokenUrl headerString "POST"
+        |> FromString
+
+    member this.GetAuthorizationUrl requestToken =
+        AuthorizeUrl + @"?oauth_token=" + fst requestToken
+
+    member this.GetAccessToken( requestToken, verifier ) =
+        let headerString = authParams.ToHeaderStringForAccessToken( requestToken, verifier )
+        GetOAuthRequestResult AccessTokenUrl headerString "POST"
+        |> FromString
+    
+type OAuth( ckey, csec, akey, asec ) =
+
+    let parameters = new OAuthParameters( ckey, csec )
+
+    member this.ConsumerKey = ckey
+    member this.ConsumerSecret = csec
+    member this.AccessKey = akey
+    member this.AccessSecret = asec
 
     member this.GetRequest url =
-        let parameters = new OAuthParameters( this.ConsumerToken )
-        let headerstring = parameters.ToHeaderStringForApi( this.AccessToken, url, "GET", [] )
+        let headerstring = parameters.ToHeaderStringForApi( (this.AccessKey, this.AccessSecret), url, "GET", [] )
         let xmlDoc = new XmlDocument()
         GetOAuthRequestResult url headerstring "GET"
         |> xmlDoc.LoadXml
         xmlDoc
 
     member this.PostRequest url body =
-        let parameters = new OAuthParameters( this.ConsumerToken )
         let urlWithParam =
             body
             |> List.map (fun (k, v) -> k + "=" + v)
             |> List.reduce (fun acc item -> acc + "&" + item)
             |> (+) (url + "?")
-        let headerstring = parameters.ToHeaderStringForApi( this.AccessToken, url, "POST", body )
+        let headerstring = parameters.ToHeaderStringForApi( (this.AccessKey, this.AccessSecret), url, "POST", body )
         let xmlDoc = new XmlDocument()
         GetOAuthRequestResult urlWithParam headerstring "POST"
         |> xmlDoc.LoadXml
         xmlDoc
         
-    member this.GetRequestToken() = 
-        let authParams = new OAuthParameters( this.ConsumerToken )
-        let headerString = authParams.ToHeaderStringForRequestToken()
-        GetOAuthRequestResult RequestTokenUrl headerString "POST"
-        |> OAuthToken.FromString
-
-    member this.GetAuthorizationUrl (requestToken:OAuthToken) =
-        AuthorizeUrl + @"?oauth_token=" + requestToken.Key
-
-    member this.GetAccessToken( requestToken, verifier ) =
-        let authParams = new OAuthParameters( this.ConsumerToken)
-        let headerString = authParams.ToHeaderStringForAccessToken( requestToken, verifier )
-        GetOAuthRequestResult AccessTokenUrl headerString "POST"
-        |> OAuthToken.FromString
+//    member this.GetRequestToken() = 
+//        let authParams = new OAuthParameters( this.ConsumerKey, this.ConsumerSecret )
+//        let headerString = authParams.ToHeaderStringForRequestToken()
+//        GetOAuthRequestResult RequestTokenUrl headerString "POST"
+//        |> FromString
+//
+//    member this.GetAuthorizationUrl requestToken =
+//        AuthorizeUrl + @"?oauth_token=" + fst requestToken
+//
+//    member this.GetAccessToken( requestToken, verifier ) =
+//        let authParams = new OAuthParameters( this.ConsumerKey, this.ConsumerSecret )
+//        let headerString = authParams.ToHeaderStringForAccessToken( requestToken, verifier )
+//        GetOAuthRequestResult AccessTokenUrl headerString "POST"
+//        |> FromString

@@ -66,7 +66,7 @@ namespace UnitTest
 			string source = "https://auth.login.yahoo.co.jp/oauth/v2/get_request_token";
 			string expect = "https%3A%2F%2Fauth.login.yahoo.co.jp%2Foauth%2Fv2%2Fget_request_token";
 
-			string urlEncoded = OAuth.UrlEncode( source );
+			string urlEncoded = TwitterApi.OAuthUtility.UrlEncode( source );
 
 			Assert.AreEqual( expect, urlEncoded );
 		}

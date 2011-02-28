@@ -41,7 +41,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="OAuth.fs" />
+    <Compile Include="OAuthUrl.fs" />
+    <Compile Include="OAuthUtility.fs" />
+    <Compile Include="OAuthParameters.fs" />
+    <Compile Include="OAuthRegistration.fs" />
+    <Compile Include="OAuthHandler.fs" />
     <Compile Include="TwitterApi.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>

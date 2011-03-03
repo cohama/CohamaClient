@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Net;
+using TwitterApi;
 
 namespace UnitTest
 {
@@ -66,9 +67,27 @@ namespace UnitTest
 			string source = "https://auth.login.yahoo.co.jp/oauth/v2/get_request_token";
 			string expect = "https%3A%2F%2Fauth.login.yahoo.co.jp%2Foauth%2Fv2%2Fget_request_token";
 
-			string urlEncoded = TwitterApi.OAuthUtility.UrlEncode( source );
+			string urlEncoded = OAuthUtility.UrlEncode( source );
 
 			Assert.AreEqual( expect, urlEncoded );
+		}
+
+		[TestMethod]
+		public void OAuthSerializationTest()
+		{
+			string ckey = "this";
+			string csec = "is";
+			string akey = "a";
+			string asec = "test";
+			OAuthHandler oauth = new OAuthHandler( ckey, csec, akey, asec );
+			oauth.SaveAs( @"serialized.txt" );
+
+			OAuthHandler loaded = OAuthHandler.LoadFrom( @"serialized.txt" );
+
+			Assert.AreEqual( ckey, loaded.ConsumerKey );
+			Assert.AreEqual( csec, loaded.ConsumerSecret );
+			Assert.AreEqual( akey, loaded.AccessKey );
+			Assert.AreEqual( asec, loaded.AccessSecret );
 		}
 	}
 }

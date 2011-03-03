@@ -3,6 +3,8 @@ using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Xml;
+using TwitterApi;
 
 namespace SlowTest
 {
@@ -60,11 +62,21 @@ namespace SlowTest
 		#endregion
 
 		[TestMethod]
-		public void TestMethod1()
+		public void HomeTimeLineTest()
 		{
-			//
-			// TODO: テスト ロジックをここに追加します
-			//
+			XmlDocument doc = new XmlDocument();
+			doc.Load( @"D:\Documents\Visual Studio 2010\F#\TwitterClient\oauthtoken.xml" );
+			XmlNode root = doc.SelectSingleNode( "/OAuthTokens" );
+
+			string ckey = root["ConsumerKey"].InnerText;
+			string csec = root["ConsumerSecret"].InnerText;
+			string akey = root["AccessKey"].InnerText;
+			string asec = root["AccessSecret"].InnerText;
+
+			OAuthHandler oauth = new OAuthHandler( ckey, csec, akey, asec );
+			Api api = new Api( oauth );
+
+			XmlNodeList result = api.HomeTimeLine();
 		}
 	}
 }

@@ -34,7 +34,7 @@ type TwitterApi( oauth:OAuthHandler ) =
         let path = "statuses/update.xml"
         let url = TwitterApiUrl + path
 
-        let status = [("status", UrlEncodeWithUtf8 text)]
+        let status = [("status", text)]
 
         let result = oauth.PostRequest url status
         ()

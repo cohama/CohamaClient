@@ -23,12 +23,15 @@ type OAuthHandler( ckey, csec, akey, asec ) =
         xmlDoc
 
     member this.PostRequest url body =
-        let urlWithParam =
+        let encodedBody =
             body
+            |> List.map (fun (k, v) -> k, UrlEncodeWithUtf8 v)
+        let urlWithParam =
+            encodedBody
             |> List.map (fun (k, v) -> k + "=" + v)
             |> List.reduce (fun acc item -> acc + "&" + item)
             |> (+) (url + "?")
-        let headerstring = parameters.ToHeaderStringForApi( (this.AccessKey, this.AccessSecret), url, "POST", body )
+        let headerstring = parameters.ToHeaderStringForApi( (this.AccessKey, this.AccessSecret), url, "POST", encodedBody )
         let xmlDoc = new XmlDocument()
         GetOAuthRequestResult urlWithParam headerstring "POST"
         |> xmlDoc.LoadXml

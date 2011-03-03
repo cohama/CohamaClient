@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Xml;
 
 namespace TwitterClient
 {
@@ -19,9 +20,20 @@ namespace TwitterClient
 	/// </summary>
 	public partial class MainWindow : Window
 	{
+		TwitterApi.Api api;
+		TwitterApi.OAuthHandler oauth;
+
 		public MainWindow()
 		{
 			InitializeComponent();
+		}
+
+		private void Window_Loaded( object sender, RoutedEventArgs e )
+		{
+			this.oauth = TwitterApi.OAuthHandler.LoadFrom( "oauthtoken" );
+			this.api = new TwitterApi.Api( this.oauth );
+
+			this.listBox.ItemsSource = this.api.HomeTimeLine();
 		}
 	}
 }

@@ -1,5 +1,5 @@
 #ignore OAuthToken file
-*.oauthToken.xml
+oauthtoken.xml
 
 #ignore thumbnails created by windows
 Thumbs.db

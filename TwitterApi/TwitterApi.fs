@@ -1,13 +1,11 @@
-﻿
-namespace TwitterApi
+﻿namespace TwitterApi
 
-open OAuthUtility
 open System.Net
 open System.IO
 open System.Xml
 open System.Text
 
-type TwitterApi( oauth:OAuthHandler ) =
+type Api( oauth:OAuthHandler ) =
 
     let TwitterApiUrl = "http://api.twitter.com/1/"
 

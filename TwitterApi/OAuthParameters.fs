@@ -1,5 +1,4 @@
-﻿
-namespace TwitterApi
+﻿namespace TwitterApi
 
 open OAuthUtility
 open OAuthUrl
@@ -7,7 +6,7 @@ open System
 open System.Text
 open System.Security.Cryptography
 
-type private OAuthParameters( consumerKey, consumerSecret ) =
+type OAuthParameters( consumerKey, consumerSecret ) =
 
     let encryptByHmacSha1WithBase64 (key:string) (source:string) = 
         let srcByte = Encoding.UTF8.GetBytes( source )
